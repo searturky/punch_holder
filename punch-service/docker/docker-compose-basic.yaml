@@ -1,0 +1,14 @@
+version: "3.11.1"
+
+services:
+  mongo:
+    image: mongo:6.0.5
+    restart: always
+    volumes:
+      - ./data/mongodb:/data/db
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: punch
+      MONGO_INITDB_ROOT_PASSWORD: test123
+      MONGO_INITDB_DATABASE: punch
