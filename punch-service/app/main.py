@@ -1,4 +1,3 @@
-import datetime
 # from fastapi import FastAPI, Request, status
 # from fastapi.responses import JSONResponse
 # from fastapi.middleware.cors import CORSMiddleware
@@ -6,7 +5,7 @@ import datetime
 # from app.api.router import router
 # from app.core.config import settings
 from httpx import AsyncClient
-
+from models.holder_api import TodayStaticId, PunchIn, PunchInType, MorningInfo, AfternoonInfo
 # def get_application():
 #     _app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -45,7 +44,7 @@ header_1 = {
     "Host": "zkz.holderzone.com",
     "languages": "zh_CN",
     "system": "oa",
-    "version": 169,
+    "version": "169",
     "Accept": "*/*",
     "Accept-Language": "zh-Hans-CN;q=1.0, en-CN;q=0.9",
     "Accept-Encoding": "br;q=1.0, gzip;q=0.9, deflate;q=0.8",
@@ -54,18 +53,18 @@ header_1 = {
     "User-Agent": "GoalgoMaster/1.6.9 (com.holder.app.goalgo.Goalgo; build:1; iOS 16.3.1) Alamofire/5.5.0",
     "Connection": "keep-alive",
     "hardware": "ios",
-    "companyId": 244
+    "companyId": "244"
 }
 cookie_1 = {
     "session_id": "1189f9a735e1c25a15da6c10c4dc29cd47a21099"
 }
 body_1 = {
-  "card_choice" : 1,
+  "card_choice" : "1",
   "work_order_chooce_id" : "",
   "card_equipment" : "",
-  "httpWithoutRpc" : 1,
+  "httpWithoutRpc" : "1",
   "card_wifi" : "10",
-  "statistic_id" : 160211,
+  "statistic_id" : "160211",
   "card_point" : "09:00:00",
   "point_morrow" : False,
   "card_remark" : "",
@@ -84,7 +83,7 @@ header_2 = {
     "Host": "zkz.holderzone.com",
     "languages": "zh_CN",
     "system": "oa",
-    "version": 169,
+    "version": "169",
     "Accept": "*/*",
     "Accept-Language": "zh-Hans-CN;q=1.0, en-CN;q=0.9",
     "Accept-Encoding": "br;q=1.0, gzip;q=0.9, deflate;q=0.8",
@@ -93,18 +92,18 @@ header_2 = {
     "User-Agent": "GoalgoMaster/1.6.9 (com.holder.app.goalgo.Goalgo; build:1; iOS 16.3.1) Alamofire/5.5.0",
     "Connection": "keep-alive",
     "hardware": "ios",
-    "companyId": 244,
+    "companyId": "244",
 }
 cookie_2 = {
     "session_id": "1189f9a735e1c25a15da6c10c4dc29cd47a21099"
 }
 body_2 = {
-  "card_choice" : 2,
+  "card_choice" : "2",
   "card_equipment" : "",
-  "httpWithoutRpc" : 1,
+  "httpWithoutRpc" : "1",
   "work_order_chooce_id" : "",
   "card_wifi" : "",
-  "statistic_id" : 160211,
+  "statistic_id" : "160211",
   "belong_day" : "2023-05-15",
   "card_remark" : "",
   "point_morrow" : False,
@@ -117,28 +116,31 @@ body_2 = {
   "card_address" : "成都市武侯区凯乐国际-2幢&成都市武侯区凯乐国际-2幢"
 }
 
-async def logout(http_client: AsyncClient):
+async def main():
+    cookies = {"session_id": s_id_1}
+    login_token = "a1701b16-7774-4a64-8d7f-7df442372500"
+    user_account = "18602876620"
+    res = await TodayStaticId.request(
+        login_token=login_token,
+        user_account=user_account,
+        cookies=cookies
+    )
+    static_id = res.get("today_static_id")
+    # 160507
+    today_morning_info: MorningInfo= res.get("today_morning_info")
+    today_afternoon_info: AfternoonInfo = res.get("today_afternoon_info")
+    print('static_id', static_id)
+    res = await PunchIn.request(
+        login_token=login_token,
+        user_account=user_account,
+        punch_type=PunchInType.MORNING,
+        static_id=static_id,
+        cookies=cookies
+    )
     ...
 
-async def main():
-    from http_client import get_http_client
-    today = str(datetime.date.today())
-    body_1['target_date'] = today
-    body_1['belong_day'] = today
-    header_1['loginToken'] = "a1701b16-7774-4a64-8d7f-7df442372500"
-    async with get_http_client() as http_client:
-        http_client: AsyncClient
-        response = await http_client.post(
-            url=url,
-            cookies={"session_id": s_id_1},
-            headers=header_1,
-            json=body_1,
-        )
-
-        print(response.json)
 
 if __name__ == '__main__':
     import asyncio
     asyncio.run(main())
-    # async with get_http_client() as http_client:
 
