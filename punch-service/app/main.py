@@ -126,7 +126,6 @@ async def main():
         cookies=cookies
     )
     static_id = res.get("today_static_id")
-    # 160507
     today_morning_info: MorningInfo= res.get("today_morning_info")
     today_afternoon_info: AfternoonInfo = res.get("today_afternoon_info")
     print('static_id', static_id)
