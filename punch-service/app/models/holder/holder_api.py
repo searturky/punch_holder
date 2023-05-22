@@ -1,7 +1,7 @@
 from enum import Enum
-from http_client import get_http_client
-from utils.holder_api_args import get_today_date_str
-from httpx import AsyncClient
+from app.http_client import get_http_client
+from app.utils.holder_api_args import get_today_date_str
+from httpx import AsyncClient, Response
 
 
 class PunchInType(str, Enum):
@@ -114,6 +114,19 @@ class AfternoonInfo():
             return self.punch_in_time != False or self._info.get("state") == "done"
 
 
+class TodayPunchInfo():
+
+    def __init__(self, res: Response):
+        res_json: dict = res.json()
+        morning_info: list = res_json.get("data", {}).get("card_history", {}).get("morning", [])
+        afternoon_info: list = res_json.get("data", {}).get("card_history", {}).get("afternoon", [])
+        self.session_id: str = res.cookies.get("session_id")
+        self.is_rest: bool = True if res_json.get("data", {}).get("card_state") == 'rest' else False
+        self.static_id: int = res_json.get("data", {}).get("id")
+        self.morning_info = MorningInfo(morning_info[0]) if len(morning_info) > 0 else None
+        self.afternoon_info = AfternoonInfo(afternoon_info[0]) if len(afternoon_info) > 0 else None
+
+
 class TodayStaticId():
 
     _url = ApiURLs.TodayStaticId
@@ -132,7 +145,7 @@ class TodayStaticId():
     }
 
     @classmethod
-    async def request(cls, login_token:str, user_account:str, cookies: dict=None, headers: dict=None):
+    async def request(cls, login_token:str, user_account:str, cookies: dict=None, headers: dict=None) -> TodayPunchInfo:
         async with get_http_client() as http_client:
             http_client: AsyncClient
             res = await http_client.get(
@@ -145,10 +158,4 @@ class TodayStaticId():
                 }
             )
             assert res.status_code == 200, 'Request failed'
-            today_morning_info = MorningInfo(res.json().get("data").get("card_history").get("morning")[0])
-            today_afternoon_info = AfternoonInfo(res.json().get("data").get("card_history").get("afternoon")[0])
-            return {
-                'today_static_id': res.json().get("data").get("id"),
-                'today_morning_info': today_morning_info,
-                'today_afternoon_info': today_afternoon_info
-            }
+            return TodayPunchInfo(res)

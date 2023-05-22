@@ -10,8 +10,10 @@ class Settings(BaseSettings):
     PROJECT_NAME: str
     BACKEND_CORS_ORIGINS: List[str] = []
     SERVICE_ENV: str
+    MONGODB_URL: str
+    APSCHEDULER_MONGODB_URL: str
 
-    class Config(BaseSettings.Config):
+    class Config:
         case_sensitive = True
         env_file = '.env', '.env.prod'
         env_file_encoding = 'utf-8'
@@ -31,7 +33,6 @@ class Settings(BaseSettings):
 
     #     raise ValueError(value)
 
-    MONGODB_URL: str
 
 settings = Settings()
 pass

@@ -1,7 +1,6 @@
 import asyncio
-from typing import Any, Dict, cast
-
 import motor.motor_asyncio
+from typing import Any, Dict, cast
 from app.core.config import settings
 
 
