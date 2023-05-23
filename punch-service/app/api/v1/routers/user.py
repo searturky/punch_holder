@@ -12,7 +12,7 @@ from pymongo import ReturnDocument
 router = APIRouter()
 
 
-@router.post("/register", response_description="注册一个新打卡任务")
+@router.post("/user", response_description="注册一个新打卡任务")
 async def register(register_info: RegisterIn = Body(...)):
     user: User = await get_user(db, register_info.token)
     if not user:
@@ -22,13 +22,3 @@ async def register(register_info: RegisterIn = Body(...)):
     register = Register(**register_info.dict())
     await db["register"].insert_one(jsonable_encoder(register))
     return JSONResponse(status_code=status.HTTP_201_CREATED)
-
-
-@router.get("/register/all", response_description="获取所有打卡任务")
-async def get_all_register(request: Request):
-    return JSONResponse(status_code=status.HTTP_200_OK)
-
-
-@router.delete("/register/{register_id}", response_description="删除一个打卡任务")
-async def delete_register(register_id: str):
-    return JSONResponse(status_code=status.HTTP_200_OK)

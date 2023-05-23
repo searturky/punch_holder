@@ -6,14 +6,6 @@ from app.api.router import router
 from app.core.config import settings
 from app.scheduler import scheduler
 from app.database import db
-from app.models.holder.holder_api import (
-    TodayStaticId, 
-    PunchIn, 
-    PunchInType, 
-    MorningInfo, 
-    AfternoonInfo,
-    TodayPunchInfo,
-)
 
 
 def get_application():
@@ -35,9 +27,7 @@ def get_application():
     )
 
     _app.include_router(router, prefix="/api")
-    _app.db = db
     scheduler.start()
-    _app.scheduler = scheduler
 
     return _app
 

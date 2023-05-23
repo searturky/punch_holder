@@ -1,10 +1,8 @@
 from typing import Any
 from pydantic import BaseModel
+from enum import Enum
 
+class DBCollectionNames(str, Enum):
 
-class ResponseOut(BaseModel):
-
-    data: Any
-    message: str = None
-    code: int = 200
-    success: bool = True
+    USER_TOKEN = "user_token"
+    REGISTER = "register"
