@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     SERVICE_ENV: str
     MONGODB_URL: str
     APSCHEDULER_MONGODB_URL: str
+    SUPERUSER_TOKEN: str
 
     class Config:
         case_sensitive = True

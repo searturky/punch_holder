@@ -1,5 +1,6 @@
 import secrets
 from motor.core import AgnosticDatabase
+from app.models.common import DBCollectionNames
 
 
 def gen_api_token() -> str:
@@ -8,7 +9,7 @@ def gen_api_token() -> str:
 
 async def write_api_token_to_db(db: AgnosticDatabase) -> None:
     token = gen_api_token()
-    await db["user_token"].insert_one({"token": token})
+    await db[DBCollectionNames.USER].insert_one({"token": token})
 
 
 if __name__ == '__main__':

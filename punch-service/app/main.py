@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -5,7 +6,9 @@ from pydantic import ValidationError
 from app.api.router import router
 from app.core.config import settings
 from app.scheduler import scheduler
-from app.database import db
+from app.database import db, init_db
+from app.middleware.common import BasicAuthBackend
+from starlette.middleware.authentication import AuthenticationMiddleware
 
 
 def get_application():
@@ -25,7 +28,8 @@ def get_application():
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
+    _app.add_middleware(AuthenticationMiddleware, backend=BasicAuthBackend(db=db))
+    init_db(db)
     _app.include_router(router, prefix="/api")
     scheduler.start()
 
