@@ -5,4 +5,5 @@ from enum import Enum
 class DBCollectionNames(str, Enum):
 
     USER = "user"
+    KEY = "key"
     REGISTER = "register"

@@ -9,7 +9,11 @@ class Settings(BaseSettings):
     SERVICE_ENV: str
     MONGODB_URL: str
     APSCHEDULER_MONGODB_URL: str
-    SUPERUSER_TOKEN: str
+    SUPERUSER_KEY: str
+
+    SECRET_KEY: str
+    ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
 
     class Config:
         case_sensitive = True

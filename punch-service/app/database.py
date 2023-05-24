@@ -6,7 +6,7 @@ from typing import Any, Dict, cast
 from fastapi.encoders import jsonable_encoder
 from app.core.config import settings
 from app.models.common import DBCollectionNames
-from app.models.api.user import User, TokenTypes
+from app.models.api.key import Key, KeyTypes
 
 
 def create_db(io_loop: AbstractEventLoop=None):
@@ -24,14 +24,14 @@ def create_db(io_loop: AbstractEventLoop=None):
 
 def init_db(db: "AgnosticDatabase"):
 
-    superuser_token = settings.SUPERUSER_TOKEN
+    superuser_key = settings.SUPERUSER_KEY
     io_loop = asyncio.get_running_loop()
 
     async def do_init_db():
-        doc = await db[DBCollectionNames.USER].find_one({"token": superuser_token})
+        doc = await db[DBCollectionNames.KEY].find_one({"key": superuser_key})
         if doc is None:
-            super_user = User(token=superuser_token, token_type=TokenTypes.SUPERUSER)
-            await db[DBCollectionNames.USER].insert_one(jsonable_encoder(super_user))
+            super_user_key = Key(key=superuser_key, key_type=KeyTypes.SUPERUSER)
+            await db[DBCollectionNames.KEY].insert_one(jsonable_encoder(super_user_key))
 
     io_loop.create_task(do_init_db())
 

@@ -28,7 +28,7 @@ def get_application():
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    _app.add_middleware(AuthenticationMiddleware, backend=BasicAuthBackend(db=db))
+    # _app.add_middleware(AuthenticationMiddleware, backend=BasicAuthBackend(db=db))
     init_db(db)
     _app.include_router(router, prefix="/api")
     scheduler.start()

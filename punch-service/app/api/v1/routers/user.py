@@ -24,8 +24,8 @@ async def update_user(update_info: UserIn = Body(...)):
     return JSONResponse(status_code=status.HTTP_201_CREATED)
 
 
-@router.get("", response_description="获取所有用户信息")
-async def all_user(request: Request):
+@router.get("/all/{super_token}", response_description="获取所有用户信息")
+async def all_user(request: Request, super_token: str):
     user = request.user
     if not user.is_authenticated or not user.is_admin:
         return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "token校验失败"})

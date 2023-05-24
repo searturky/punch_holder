@@ -2,17 +2,18 @@ from collections import defaultdict
 from app.crud.register import is_register
 from app.crud.user import get_user
 from app.database import db
-from fastapi import APIRouter, Body, Request, status
+from fastapi import APIRouter, Body, Depends, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 from app.models.api.register import RegisterIn, Register
 from app.models.api.user import User
 from pymongo import ReturnDocument
 
+
 router = APIRouter()
 
 
-@router.post("/register", response_description="注册一个新打卡任务")
+@router.post("", response_description="注册一个新打卡任务")
 async def register(register_info: RegisterIn = Body(...)):
     user: User = await get_user(db, register_info.token)
     if not user:
