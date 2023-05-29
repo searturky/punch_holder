@@ -1,23 +1,16 @@
 from enum import Enum
-from bson import ObjectId
+from typing import Union
 from pydantic import BaseModel, Field
-from app.models.extra import JsonObjectID
+from fastapi.security import OAuth2PasswordBearer
 
 
-# class Token(BaseModel):
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/token")
 
-#     id: JsonObjectID = Field(default_factory=JsonObjectID, alias="_id")
-#     token: str
-#     token_type: TokenTypes
-#     bound: bool = False
 
-#     class Config:
-#         json_encoders = {ObjectId: str}
+class TokenData(BaseModel):
+    username: Union[str, None] = None
 
-#     @property
-#     def is_admin_token(self) -> bool:
-#         return self.token_type == TokenTypes.ADMIN or self.token_type == TokenTypes.SUPERUSER
-    
-#     @property
-#     def is_superuser_token(self) -> bool:
-#         return self.token_type == TokenTypes.SUPERUSER
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str

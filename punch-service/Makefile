@@ -28,3 +28,6 @@ lint:
 
 test:
 	python -m pytest tests/
+
+clean-docker-pg-data:
+	sudo rm -rf docker/data/postgresql

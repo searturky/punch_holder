@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     PROJECT_NAME: str
     BACKEND_CORS_ORIGINS: List[str] = []
     SERVICE_ENV: str
-    MONGODB_URL: str
-    APSCHEDULER_MONGODB_URL: str
+    PGSQL_URL: str
+    SCHEDULER_PGSQL_URL: str
     SUPERUSER_KEY: str
 
     SECRET_KEY: str

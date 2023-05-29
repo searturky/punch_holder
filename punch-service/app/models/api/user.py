@@ -1,16 +1,13 @@
 from enum import Enum
 from typing import Union
-from bson import ObjectId
 from pydantic import BaseModel, Field
-from app.models.extra import JsonObjectID
 from app.models.api.key import Key
 
-class UserIn(BaseModel):
+class CreateUserIn(BaseModel):
 
-    token: str
-    user_account: str = None
-    session_id: str = None
-    login_token: str = None
+    key: str
+    username: str
+    password: str
 
 
 class GetAllUserIn(BaseModel):
@@ -20,20 +17,16 @@ class GetAllUserIn(BaseModel):
 
 class User(BaseModel):
 
-    id: JsonObjectID = Field(default_factory=JsonObjectID, alias="_id")
-    token: Key
+    key: Key
     username: str
     email: Union[str, None] = None
     full_name: Union[str, None] = None
-    disabled: Union[bool, None] = None
-    phone: Union[str, None] = None
+    disabled: bool = False
+    phone: str = None
     nickname: str = None
     user_account: str = None
     session_id: str = None
     login_token: str = None
-
-    class Config:
-        json_encoders = {ObjectId: str}
 
     # @property
     # def display_name(self) -> str:

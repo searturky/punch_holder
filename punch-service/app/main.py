@@ -6,9 +6,7 @@ from pydantic import ValidationError
 from app.api.router import router
 from app.core.config import settings
 from app.scheduler import scheduler
-from app.database import db, init_db
-from app.middleware.common import BasicAuthBackend
-from starlette.middleware.authentication import AuthenticationMiddleware
+from app.crud.common import init_db
 
 
 def get_application():
@@ -28,9 +26,8 @@ def get_application():
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    # _app.add_middleware(AuthenticationMiddleware, backend=BasicAuthBackend(db=db))
-    init_db(db)
     _app.include_router(router, prefix="/api")
+    init_db(settings.SUPERUSER_KEY)
     scheduler.start()
 
     return _app
