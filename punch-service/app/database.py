@@ -1,9 +1,10 @@
 from app.core.config import settings
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm.decl_api import DeclarativeBase
 
 
-Base = declarative_base()
+Base:DeclarativeBase  = declarative_base()
 engine = create_async_engine(
     settings.PGSQL_URL,
 )

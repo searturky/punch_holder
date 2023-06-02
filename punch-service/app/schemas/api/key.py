@@ -1,8 +1,9 @@
+import enum
 from app.schemas.common import CommonBase
 from sqlalchemy import Column, Boolean, String, Enum
 
 
-class KeyTypes(str, Enum):
+class KeyTypes(str, enum.Enum):
 
     USER = "user"
     ADMIN = "admin"

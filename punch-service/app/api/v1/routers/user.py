@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.post("", response_description="新用户注册")
 async def create_user(create_user_info: CreateUserIn = Body(...)):
-    key = await get_key(db, create_user_info.key)
+    key = await get_key(create_user_info.key_code)
     if not key or key.bound:
         return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "key未注册或已经被使用"})
     if await get_user(db, create_user_info.username):

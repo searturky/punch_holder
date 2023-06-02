@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, Dict, cast
 from sqlalchemy import Column, DateTime, Integer
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, create_async_engine
@@ -6,7 +7,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.sql import func
 from sqlalchemy.sql.selectable import Select
 from sqlalchemy.engine.result import ScalarResult
-from app.database import Base, async_session_factory
+from app.database import Base, async_session_factory, engine
 
 class CommonBase(Base):
     __abstract__ = True
@@ -46,9 +47,16 @@ class CommonBase(Base):
             session: AsyncSession
             stmt = select(func.count(cls.id))
             return cast(ScalarResult, (await session.scalars(stmt))).first()
+        
+    @classmethod
+    async def find_one_by(cls, **kwargs):
+        async with cls._async_session_factory() as session:
+            session: AsyncSession
+            stmt = cast(Select, select(cls)).filter_by(**kwargs)
+            return cast(ScalarResult, (await session.scalars(stmt))).first()
 
     @classmethod
-    async def find_by(cls, **kwargs):
+    async def find_all_by(cls, **kwargs):
         async with cls._async_session_factory() as session:
             session: AsyncSession
             stmt = cast(Select, select(cls)).filter_by(**kwargs)

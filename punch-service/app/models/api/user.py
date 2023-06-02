@@ -5,7 +5,7 @@ from app.models.api.key import Key
 
 class CreateUserIn(BaseModel):
 
-    key: str
+    key_code: str
     username: str
     password: str
 

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Union
 
 from pydantic import BaseModel
-from app.api.v1.routers import task, user, token
+from app.api.v1.routers import task, user, token, key
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.models.api.user import User, UserInDB
 from passlib.context import CryptContext
@@ -16,6 +16,7 @@ router = APIRouter()
 router.include_router(task.router, prefix="/register")
 router.include_router(user.router, prefix="/user")
 router.include_router(token.router, prefix="/token")
+router.include_router(key.router, prefix="/key")
 
 
 # fake_users_db = {
