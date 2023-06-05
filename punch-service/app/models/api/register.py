@@ -1,18 +1,16 @@
 from pydantic import BaseModel, Field
 
 
-class RegisterIn(BaseModel):
+class RegisterPunchTaskIn(BaseModel):
 
-    token: str
-    user_account: str
-    session_id: str
-    login_token: str
+    user_account: str | None
+    session_id: str | None
+    login_token: str | None
 
-class Register(BaseModel):
 
-    token: str
-    user_account: str
-    session_id: str
-    login_token: str
+class RegisterTestTaskIn(BaseModel):
+
+    test_msg: str
+
 
 

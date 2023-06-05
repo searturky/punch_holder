@@ -1,2 +1,2 @@
-from app.models.api.register import RegisterIn
-from app.models.common import DBCollectionNames
+from app.schemas.api.task import TaskBase
+from app.schemas.api.user import User

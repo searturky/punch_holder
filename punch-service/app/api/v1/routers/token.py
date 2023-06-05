@@ -4,7 +4,6 @@ from app.models.api.token import Token, TokenData
 from pydantic import BaseModel
 from app.api.v1.routers import task, user
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.models.api.user import User, UserInDB
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -17,7 +16,7 @@ router = APIRouter()
 
 @router.post("", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = await authenticate_user(db, form_data.username, form_data.password)
+    user = await authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

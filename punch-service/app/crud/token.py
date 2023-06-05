@@ -1,9 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Union
-from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 from app.models.api.token import TokenData
-from app.models.api.user import User, UserInDB
 from app.models.common import DBCollectionNames
 from passlib.context import CryptContext
 from app.core.config import settings

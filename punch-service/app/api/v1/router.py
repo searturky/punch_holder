@@ -1,19 +1,9 @@
-from datetime import datetime, timedelta
-from typing import Union
-
-from pydantic import BaseModel
+from fastapi import APIRouter
 from app.api.v1.routers import task, user, token, key
-from fastapi import APIRouter, Depends, HTTPException, status
-from app.models.api.user import User, UserInDB
-from passlib.context import CryptContext
-from jose import JWTError, jwt
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-
-# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/token")
 
 router = APIRouter()
 
-router.include_router(task.router, prefix="/register")
+router.include_router(task.router, prefix="/task")
 router.include_router(user.router, prefix="/user")
 router.include_router(token.router, prefix="/token")
 router.include_router(key.router, prefix="/key")

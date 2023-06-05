@@ -145,12 +145,12 @@ class TodayStaticId():
     }
 
     @classmethod
-    async def request(cls, login_token:str, user_account:str, cookies: dict=None, headers: dict=None) -> TodayPunchInfo:
+    async def request(cls, login_token:str, user_account:str, session_id:str, cookies: dict=None, headers: dict=None) -> TodayPunchInfo:
         async with get_http_client() as http_client:
             http_client: AsyncClient
             res = await http_client.get(
                 url=cls._url,
-                cookies=cookies,
+                cookies=cookies or {"session_id": session_id},
                 headers=headers or {**cls._headers, "loginToken": login_token},
                 params={
                     "target_date": get_today_date_str(),

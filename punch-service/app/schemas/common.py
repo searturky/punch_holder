@@ -1,20 +1,21 @@
-import asyncio
 from typing import Any, Dict, cast
 from sqlalchemy import Column, DateTime, Integer
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.future import select
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 from sqlalchemy.sql.selectable import Select
 from sqlalchemy.engine.result import ScalarResult
 from app.database import Base, async_session_factory, engine
 
+
 class CommonBase(Base):
+
     __abstract__ = True
 
-    id = Column(Integer, primary_key=True)
-    create_at = Column(DateTime, server_default=func.now())
-    update_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    id: Mapped[int] = mapped_column(primary_key=True)
+    create_at: Mapped[DateTime] = Column(DateTime, server_default=func.now())
+    update_at: Mapped[DateTime] = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     _async_session_factory = async_session_factory
 
