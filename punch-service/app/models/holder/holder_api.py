@@ -117,12 +117,12 @@ class AfternoonInfo():
 class TodayPunchInfo():
 
     def __init__(self, res: Response):
-        res_json: dict = res.json()
-        morning_info: list = res_json.get("data", {}).get("card_history", {}).get("morning", [])
-        afternoon_info: list = res_json.get("data", {}).get("card_history", {}).get("afternoon", [])
+        self.res_json: dict = res.json()
+        morning_info: list = self.res_json.get("data", {}).get("card_history", {}).get("morning", [])
+        afternoon_info: list = self.res_json.get("data", {}).get("card_history", {}).get("afternoon", [])
         self.session_id: str = res.cookies.get("session_id")
-        self.is_rest: bool = True if res_json.get("data", {}).get("card_state") == 'rest' else False
-        self.static_id: int = res_json.get("data", {}).get("id")
+        self.is_rest: bool = True if self.res_json.get("data", {}).get("card_state") == 'rest' else False
+        self.static_id: int = self.res_json.get("data", {}).get("id")
         self.morning_info = MorningInfo(morning_info[0]) if len(morning_info) > 0 else None
         self.afternoon_info = AfternoonInfo(afternoon_info[0]) if len(afternoon_info) > 0 else None
 

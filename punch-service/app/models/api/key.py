@@ -1,7 +1,7 @@
-from enum import Enum
 from pydantic import BaseModel, Field
+from app.schemas.api.key import KeyTypes
 
 
 class KeyIn(BaseModel):
 
-    code: str
+    type: KeyTypes

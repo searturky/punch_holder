@@ -1,14 +1,12 @@
-from datetime import datetime, timedelta
-from typing import Union
-from fastapi.security import OAuth2PasswordBearer
+from typing import List, TYPE_CHECKING
 from fastapi import Depends, HTTPException, status
 from app.models.api.token import TokenData
-from app.models.common import DBCollectionNames
 from app.core.config import settings
 from jose import JWTError, jwt
 from app.models.api.token import oauth2_scheme
 from app.utils.common import verify_password
 from app.schemas.api.user import User
+from app.schemas.common import CommonBase
 from app.schemas.api.key import Key
 from app.database import async_session_factory
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,11 +24,6 @@ async def authenticate_user(username: str, password: str):
     if not verify_password(password, user.password):
         return False
     return user
-
-
-async def get_all_user() -> list[dict]:
-    users = await db[DBCollectionNames.USER].find().to_list(None)
-    return users
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
@@ -55,8 +48,20 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(status_code=400, detail="Inactive User")
     return current_user
+
+
+async def get_current_active_admin_user(current_active_user: User = Depends(get_current_active_user)) -> User:
+    if not current_active_user.is_admin:
+        raise HTTPException(status_code=400, detail="User Without Permission")
+    return current_active_user
+
+
+async def get_current_active_super_user(current_active_user: User = Depends(get_current_active_user)) -> User:
+    if not current_active_user.is_superuser:
+        raise HTTPException(status_code=400, detail="User Without Permission")
+    return current_active_user
 
 
 async def create_user(user: User, key: Key) -> User:
@@ -72,3 +77,5 @@ async def create_user(user: User, key: Key) -> User:
         await session.refresh(user)
 
     return user
+
+

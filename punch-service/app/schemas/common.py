@@ -1,4 +1,4 @@
-from typing import Any, Dict, cast
+from typing import Any, Dict, Set, cast
 from sqlalchemy import Column, DateTime, Integer
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.future import select
@@ -6,10 +6,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 from sqlalchemy.sql.selectable import Select
 from sqlalchemy.engine.result import ScalarResult
-from app.database import Base, async_session_factory, engine
+from sqlalchemy.ext.asyncio import AsyncAttrs
+from app.database import Base, async_session_factory
 
 
-class CommonBase(Base):
+class CommonBase(AsyncAttrs, Base):
 
     __abstract__ = True
 
@@ -19,8 +20,8 @@ class CommonBase(Base):
 
     _async_session_factory = async_session_factory
 
-    def to_dict(self):
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+    def to_dict(self, exclude: Set = set()) -> Dict[str, Any]:
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns if c.name not in exclude}
 
     def update(self, data: Dict[str, Any]):
         for key, value in data.items():
