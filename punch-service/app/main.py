@@ -10,7 +10,11 @@ from app.crud.common import init_db
 
 
 def get_application():
-    _app = FastAPI(title=settings.PROJECT_NAME)
+    _app = FastAPI(
+        title=settings.PROJECT_NAME,
+        docs_url=settings.DOCS_URL,
+        openapi_url=settings.OPENAPI_URL
+    )
 
     @_app.exception_handler(ValidationError)
     async def validation_error_handler(request: Request, exc: ValidationError):

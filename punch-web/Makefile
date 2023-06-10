@@ -1,7 +1,7 @@
 VERSION := $(or ${CI_COMMIT_SHORT_SHA},latest)
 REPO=searturky/punch-web
 
-build-local: build
+build-local:
 	docker build -t $(REPO):$(VERSION) -t $(REPO):latest -f ./Dockerfile .
 
 build-image:
@@ -16,8 +16,8 @@ check: install
 test: install
 	yarn test:ci	
 
-build: install
-	yarn build
+# build: install
+# 	yarn build
 
 install:
 	yarn

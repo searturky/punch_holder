@@ -9,13 +9,19 @@ build-image:
 	docker build -t $(REPO):$(VERSION) -t $(REPO):latest -f ./Dockerfile .
 	docker push $(REPO):$(VERSION)
 	docker push $(REPO):latest
-	docker rmi $(REPO):$(VERSION)
+	# docker rmi $(REPO):$(VERSION)
 
 env-up:
 	docker-compose -f docker/docker-compose-basic.yaml up -d
 
 env-down:
 	docker-compose -f docker/docker-compose-basic.yaml down
+
+up:
+	docker-compose -f docker/docker-compose.yaml up -d
+
+down:
+	docker-compose -f docker/docker-compose.yaml down
 
 install:
 	python -m pip install -r requirements.txt

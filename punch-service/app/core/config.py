@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
 
+    DOCS_URL: str
+    OPENAPI_URL: str
+
     class Config:
         case_sensitive = True
         env_file = '.env', '.env.prod'

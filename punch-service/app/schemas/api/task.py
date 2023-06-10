@@ -104,6 +104,7 @@ class PunchTask(TaskBase):
             login_token=self.login_token,
         )
         print('=================发起请求==========================', datetime.now())
+        print('=================今天是否休息==========================',punch_info.is_rest)
         pp = pprint.PrettyPrinter(indent=4)
         pp.pprint(punch_info.res_json)
         if punch_info.is_rest:
