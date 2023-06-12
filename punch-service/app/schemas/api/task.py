@@ -51,7 +51,6 @@ class TaskBase(CommonBase):
         self.status = TaskStatus.PENDING
         await self.save()
         try:
-            await self._run()
             scheduler.add_job(
                 func=self._run,
                 trigger=DateTrigger(run_date=datetime.now()),
