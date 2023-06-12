@@ -1,6 +1,7 @@
 import asyncio
 import enum
-import pprint 
+import pprint
+import logging
 from httpx import AsyncClient, Response
 from uuid import uuid1
 from random import randint
@@ -8,13 +9,15 @@ from sqlalchemy import Column, Enum, ForeignKey, Integer, String
 from app.schemas.common import CommonBase
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.orm import relationship, Mapped, mapped_column
+from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.cron import CronTrigger
 from app.models.holder.holder_api import AfternoonInfo, MorningInfo, PunchIn, TodayStaticId, TodayPunchInfo
 from app.http_client import get_http_client
 from typing import TYPE_CHECKING
-from datetime import datetime
+from datetime import datetime, timedelta,timezone
 
 
+logger = logging.getLogger("uvicorn")
 if TYPE_CHECKING:
     from app.schemas.api.user import User
 
@@ -49,6 +52,10 @@ class TaskBase(CommonBase):
         await self.save()
         try:
             await self._run()
+            scheduler.add_job(
+                func=self._run,
+                trigger=DateTrigger(run_date=datetime.now()),
+            )
             scheduler.add_job(
                 func=self._run, 
                 trigger=trigger or CronTrigger(day="*", hour="8,18", minute="45", second="0"), 
@@ -105,12 +112,10 @@ class PunchTask(TaskBase):
             session_id=self.session_id,
             login_token=self.login_token,
         )
-        print('=================发起请求==========================', datetime.now())
-        print('=================今天是否休息==========================',punch_info.is_rest)
-        pp = pprint.PrettyPrinter(indent=4)
-        pp.pprint(punch_info.res_json)
-        should_punch, punch_type, card_ponit = PunchIn.should_punch_in(punch_info)
-        if not should_punch:
+        logger.info(f'=================发起请求=========================={datetime.utcnow() + timedelta(hours=8)}')
+        logger.info(f'=================今天是否休息=========================={punch_info.is_rest}')
+        logger.info(f'{punch_info.res_json}')
+        if punch_info.is_rest:
             return
         static_id = punch_info.static_id
         # r = await PunchIn.request(
