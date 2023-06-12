@@ -1,6 +1,5 @@
 import asyncio
 import enum
-import pprint
 import logging
 from httpx import AsyncClient, Response
 from uuid import uuid1
@@ -12,8 +11,8 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.cron import CronTrigger
 from app.models.holder.holder_api import AfternoonInfo, MorningInfo, PunchIn, TodayStaticId, TodayPunchInfo
-from app.http_client import get_http_client
 from typing import TYPE_CHECKING
+from app.utils.time_util import local_now
 from datetime import datetime, timedelta,timezone
 
 
@@ -111,12 +110,19 @@ class PunchTask(TaskBase):
             session_id=self.session_id,
             login_token=self.login_token,
         )
-        logger.info(f'=================发起请求=========================={datetime.utcnow() + timedelta(hours=8)}')
+        logger.info(f'=================发起请求=========================={local_now()}')
         logger.info(f'=================今天是否休息=========================={punch_info.is_rest}')
         logger.info(f'{punch_info.res_json}')
         if punch_info.is_rest:
             return
+        should_punch, punch_type, card_ponit = await PunchIn.should_punch_in(punch_info)
+        if not PunchIn.should_punch_in(punch_info):
+            return
         static_id = punch_info.static_id
+        logger.info(f'=================punch_type=========================={punch_type}')
+        logger.info(f'=================card_ponit=========================={card_ponit}')
+        logger.info(f'=================should_punch=========================={should_punch}')
+        logger.info('=================开始打卡==========================')
         # r = await PunchIn.request(
         #     login_token=self.login_token,
         #     user_account=self.user_account,
