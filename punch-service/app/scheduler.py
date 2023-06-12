@@ -1,4 +1,4 @@
-from pytz import utc
+import pytz
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.core.config import settings
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
@@ -22,5 +22,6 @@ job_defaults = {
 scheduler = AsyncIOScheduler(
     executors=executors,
     job_defaults=job_defaults,
-    jobstores=job_stores
+    jobstores=job_stores,
+    timezone=pytz.timezone(settings.TIMEZONE)
 )

@@ -1,6 +1,8 @@
+from datetime import datetime
 from enum import Enum
+from typing import Tuple
 from app.http_client import get_http_client
-from app.utils.holder_api_args import get_today_date_str
+from app.utils.time_util import get_local_today_date_str, local_now
 from httpx import AsyncClient, Response
 
 
@@ -53,19 +55,19 @@ class PunchIn():
     }
 
     @classmethod
-    async def request(cls, user_account:str, punch_type: PunchInType, static_id: int, login_token:str, cookies: dict=None, headers: dict=None, body: dict=None):
-        today_str = get_today_date_str()
+    async def request(cls, user_account:str, punch_type: PunchInType, static_id: int, login_token:str, session_id:str, card_point:str=None, cookies: dict=None, headers: dict=None, body: dict=None):
+        today_str = get_local_today_date_str()
         async with get_http_client() as http_client:
             http_client: AsyncClient
             res = await http_client.post(
                 url=cls._url,
-                cookies=cookies,
+                cookies=cookies or {"session_id": session_id},
                 headers=headers or {**cls._headers, "loginToken": login_token},
                 json=body or {
                     **cls._body, 
                     'statistic_id': str(static_id),
                     'card_choice' : PunchInType.get_card_choice(punch_type),
-                    'card_point': PunchInType.get_card_point(punch_type),
+                    'card_point': card_point or PunchInType.get_card_point(punch_type),
                     'target_date': today_str,
                     'belong_day': today_str,
                     'user_account': user_account,
@@ -74,6 +76,20 @@ class PunchIn():
             )
             assert res.status_code == 200, 'Request failed'
             return res.json()
+        
+    @classmethod
+    def should_punch_in(cls, today_punch_info: "TodayPunchInfo") -> Tuple[bool, PunchInType, str]:
+        if today_punch_info.is_rest:
+            return False, None, None
+        today_morning_info: MorningInfo = today_punch_info.morning_info
+        today_afternoon_info: AfternoonInfo = today_punch_info.afternoon_info
+        local_now_time = local_now()
+        local_now_time_str = local_now_time.strftime("%H:%M:%S")
+        if local_now_time_str < today_morning_info.point and not today_morning_info.is_punch_in:
+            return True, PunchInType.MORNING, today_morning_info.point
+        if local_now_time_str > today_afternoon_info.point and not today_afternoon_info.is_punch_in:
+            return True, PunchInType.AFTERNOON, today_afternoon_info.point
+        return False, None, None
 
 
 class MorningInfo():
@@ -81,14 +97,16 @@ class MorningInfo():
     def __init__(self, info: dict):
         self._info = info
         self.info_type = PunchInType.MORNING
+        self.point = info.get("point") or "09:00:00"
+        self.card_address = info.get("card_address") or ""
 
     @property
-    def punch_in_time(self) -> str | bool:
+    def punch_in_time(self) -> str:
         return self._info.get("time")
 
     @property
-    def punch_in_is_active(self) -> str:
-        return self._info.get("active")
+    def punch_in_is_active(self) -> bool:
+        return self._info.get("active", False)
 
     @property
     def is_punch_in(self) -> bool:
@@ -100,14 +118,16 @@ class AfternoonInfo():
         def __init__(self, info: dict):
             self._info = info
             self.info_type = PunchInType.AFTERNOON
+            self.point = info.get("point") or "18:30:00"
+            self.card_address = info.get("card_address") or ""
     
         @property
-        def punch_in_time(self) -> str | bool:
+        def punch_in_time(self) -> str:
             return self._info.get("time")
     
         @property
-        def punch_in_is_active(self) -> str:
-            return self._info.get("active")
+        def punch_in_is_active(self) -> bool:
+            return self._info.get("active", False)
     
         @property
         def is_punch_in(self) -> bool:
@@ -153,7 +173,7 @@ class TodayStaticId():
                 cookies=cookies or {"session_id": session_id},
                 headers=headers or {**cls._headers, "loginToken": login_token},
                 params={
-                    "target_date": get_today_date_str(),
+                    "target_date": get_local_today_date_str(),
                     "user_account": user_account
                 }
             )

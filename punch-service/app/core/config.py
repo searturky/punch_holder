@@ -18,14 +18,12 @@ class Settings(BaseSettings):
     DOCS_URL: str
     OPENAPI_URL: str
 
+    TIMEZONE: str = "Asia/Shanghai"
+
     class Config:
         case_sensitive = True
         env_file = '.env', '.env.prod'
         env_file_encoding = 'utf-8'
-
-        @classmethod
-        def parse_env_var(cls, field_name: str, raw_val: str):
-            return cls.json_loads(raw_val)
 
     # @validator("BACKEND_CORS_ORIGINS", pre=True)
     # @classmethod
@@ -40,4 +38,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-pass

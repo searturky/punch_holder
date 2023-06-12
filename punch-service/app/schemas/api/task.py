@@ -1,3 +1,4 @@
+import asyncio
 import enum
 import pprint 
 from httpx import AsyncClient, Response
@@ -8,7 +9,7 @@ from app.schemas.common import CommonBase
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from apscheduler.triggers.cron import CronTrigger
-from app.models.holder.holder_api import TodayStaticId, TodayPunchInfo
+from app.models.holder.holder_api import AfternoonInfo, MorningInfo, PunchIn, TodayStaticId, TodayPunchInfo
 from app.http_client import get_http_client
 from typing import TYPE_CHECKING
 from datetime import datetime
@@ -47,10 +48,10 @@ class TaskBase(CommonBase):
         self.status = TaskStatus.PENDING
         await self.save()
         try:
-            # await self._run()
+            await self._run()
             scheduler.add_job(
                 func=self._run, 
-                trigger=trigger or CronTrigger(day="*", hour="8,18", minute=f"{randint(45, 59)}", second=f"{randint(0, 59)}"), 
+                trigger=trigger or CronTrigger(day="*", hour="8,18", minute="45", second="0"), 
                 replace_existing=True,
                 id=self.job_id,
                 name=self.job_name,
@@ -82,9 +83,9 @@ class PunchTask(TaskBase):
 
     type: Mapped[TaskType] = Column(Enum(TaskType), comment="任务类型", default=TaskType.PUNCH, nullable=False)
 
-    user_account = Column(String(64), nullable=False, comment="用户在holder的账号")
-    session_id = Column(String(64), nullable=False, comment="用户在holder的session_id")
-    login_token = Column(String(256), nullable=False, comment="用户登录holder的token")
+    user_account: Mapped[str] = Column(String(64), nullable=False, comment="用户在holder的账号")
+    session_id: Mapped[str] = Column(String(64), nullable=False, comment="用户在holder的session_id")
+    login_token: Mapped[str] = Column(String(256), nullable=False, comment="用户登录holder的token")
     
     user: Mapped["User"] = relationship(back_populates="punch_tasks")
 
@@ -98,6 +99,7 @@ class PunchTask(TaskBase):
         return True
 
     async def run(self):
+        await asyncio.sleep(randint(0, 60 * 12))
         punch_info: TodayPunchInfo = await TodayStaticId.request(
             user_account=self.user_account,
             session_id=self.session_id,
@@ -107,9 +109,19 @@ class PunchTask(TaskBase):
         print('=================今天是否休息==========================',punch_info.is_rest)
         pp = pprint.PrettyPrinter(indent=4)
         pp.pprint(punch_info.res_json)
-        if punch_info.is_rest:
+        should_punch, punch_type, card_ponit = PunchIn.should_punch_in(punch_info)
+        if not should_punch:
             return
-        ...
+        static_id = punch_info.static_id
+        # r = await PunchIn.request(
+        #     login_token=self.login_token,
+        #     user_account=self.user_account,
+        #     punch_type=punch_type,
+        #     static_id=static_id,
+        #     session_id=self.session_id,
+        #     card_point=card_ponit,
+        # )
+        return 
 
 class TestTask(TaskBase):
 
