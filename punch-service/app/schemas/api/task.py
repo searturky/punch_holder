@@ -4,6 +4,7 @@ import logging
 from httpx import AsyncClient, Response
 from uuid import uuid1
 from random import randint
+from app.utils.time_util import tzinfo
 from sqlalchemy import Column, Enum, ForeignKey, Integer, String
 from app.schemas.common import CommonBase
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -14,11 +15,12 @@ from app.models.holder.holder_api import AfternoonInfo, MorningInfo, PunchIn, To
 from typing import TYPE_CHECKING
 from app.utils.time_util import local_now
 from datetime import datetime, timedelta,timezone
+if TYPE_CHECKING:
+    from app.schemas.api.user import User
 
 
 logger = logging.getLogger("uvicorn")
-if TYPE_CHECKING:
-    from app.schemas.api.user import User
+
 
 
 class TaskStatus(str, enum.Enum):
@@ -56,7 +58,7 @@ class TaskBase(CommonBase):
             )
             scheduler.add_job(
                 func=self._run, 
-                trigger=trigger or CronTrigger(day="*", hour="8,18", minute="45", second="0"), 
+                trigger=trigger or CronTrigger(day="*", hour="8,18", minute="45", second="0", timezone=tzinfo), 
                 replace_existing=True,
                 id=self.job_id,
                 name=self.job_name,
@@ -115,8 +117,8 @@ class PunchTask(TaskBase):
         logger.info(f'{punch_info.res_json}')
         if punch_info.is_rest:
             return
-        should_punch, punch_type, card_ponit = await PunchIn.should_punch_in(punch_info)
-        if not PunchIn.should_punch_in(punch_info):
+        should_punch, punch_type, card_ponit = PunchIn.should_punch_in(punch_info)
+        if not should_punch:
             return
         static_id = punch_info.static_id
         logger.info(f'=================punch_type=========================={punch_type}')

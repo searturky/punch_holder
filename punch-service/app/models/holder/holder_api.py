@@ -1,9 +1,13 @@
+import logging
 from datetime import datetime
 from enum import Enum
 from typing import Tuple
 from app.http_client import get_http_client
 from app.utils.time_util import get_local_today_date_str, local_now
 from httpx import AsyncClient, Response
+
+
+logger = logging.getLogger("uvicorn")
 
 
 class PunchInType(str, Enum):
@@ -76,7 +80,7 @@ class PunchIn():
             )
             assert res.status_code == 200, 'Request failed'
             return res.json()
-        
+
     @classmethod
     def should_punch_in(cls, today_punch_info: "TodayPunchInfo") -> Tuple[bool, PunchInType, str]:
         if today_punch_info.is_rest:
@@ -85,9 +89,14 @@ class PunchIn():
         today_afternoon_info: AfternoonInfo = today_punch_info.afternoon_info
         local_now_time = local_now()
         local_now_time_str = local_now_time.strftime("%H:%M:%S")
+        logging.info(f"===============local_now_time_str:=================== {local_now_time_str}")
+        logging.info(f"===============today_morning_info.point=================== {today_morning_info.point}")
+        logging.info(f"===============today_afternoon_info.point=================== {today_afternoon_info.point}")
         if local_now_time_str < today_morning_info.point and not today_morning_info.is_punch_in:
+            logging.info(f"===============判断为打上午卡===================")
             return True, PunchInType.MORNING, today_morning_info.point
         if local_now_time_str > today_afternoon_info.point and not today_afternoon_info.is_punch_in:
+            logging.info(f"===============判断为打下午卡===================")
             return True, PunchInType.AFTERNOON, today_afternoon_info.point
         return False, None, None
 
