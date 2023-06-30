@@ -1,9 +1,9 @@
 from typing import List, TYPE_CHECKING, cast
 from app.crud.user import get_current_active_user, get_current_active_admin_user
 from app.crud.task import get_tasks_from_current_user, get_all_user_tasks
-from fastapi import APIRouter, Body, Depends, Query, Request, status
+from fastapi import APIRouter, Body, Depends, Query, status
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse
 from app.models.api.task import RegisterPunchTaskIn, RegisterTestTaskIn
 from app.schemas.api.task import TestTask, PunchTask, TaskBase, TaskType, TaskStatus
 from app.schemas.api.user import User
@@ -80,11 +80,13 @@ async def start_test_task_by_id(task_id: int, user: "User" = Depends(get_current
 
 
 @router.delete("/{task_type}/{task_id}", response_description="删除一个打卡任务", summary="通过id删除一个打卡任务")
-async def delete_task(task_type: "TaskType", task_id: int):
+async def delete_task(task_type: "TaskType", task_id: int, user: "User" = Depends(get_current_active_user)):
     cls: TaskBase = task_type.get_task_class()
     task: TaskBase = await cls.find_by_id(task_id)
     if not task:
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"detail": "该打卡任务不存在"})
+    if task.user_id != user.id and not user.is_admin:
+        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": "无权删除该任务"})
     if job := scheduler.get_job(task.job_id):
         scheduler.remove_job(cast("Job", job).id)
     await task.delete()

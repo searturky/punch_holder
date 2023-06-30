@@ -15,6 +15,7 @@ from app.crud.key import get_key
 router = APIRouter()
 router.tags = ["用户"]
 
+
 @router.post("", description="新用户注册", summary="新用户注册")
 async def create_new_user(create_user_info: CreateUserIn = Body(...)):
     key = await get_key(create_user_info.key_code)

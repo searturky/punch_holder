@@ -1,12 +1,7 @@
-from datetime import datetime, timedelta
-from typing import Union
-from app.models.api.token import Token, TokenData
-from pydantic import BaseModel
-from app.api.v1.routers import task, user
+from datetime import timedelta
+from app.models.api.token import Token
 from fastapi import APIRouter, Depends, HTTPException, status
-from passlib.context import CryptContext
-from jose import JWTError, jwt
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
 from app.crud.user import authenticate_user
 from app.crud.token import create_access_token
 from app.core.config import settings
