@@ -13,7 +13,7 @@ from app.utils.common import get_password_hash
 from app.crud.key import get_key
 
 router = APIRouter()
-
+router.tags = ["用户"]
 
 @router.post("", description="新用户注册", summary="新用户注册")
 async def create_new_user(create_user_info: CreateUserIn = Body(...)):

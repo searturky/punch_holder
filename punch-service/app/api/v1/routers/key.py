@@ -9,6 +9,7 @@ from app.schemas.api.user import User
 from app.schemas.api.key import Key
 
 router = APIRouter()
+router.tags = ["Key"]
 
 
 @router.post("", description="生成新key", summary="生成新key")

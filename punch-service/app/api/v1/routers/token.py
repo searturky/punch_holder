@@ -12,6 +12,7 @@ from app.crud.token import create_access_token
 from app.core.config import settings
 
 router = APIRouter()
+router.tags = ["Token"]
 
 
 @router.post("", response_model=Token)

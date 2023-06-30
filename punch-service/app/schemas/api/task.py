@@ -1,7 +1,8 @@
-import asyncio
+import re
 import enum
+import asyncio
 import logging
-from httpx import AsyncClient, Response
+from httpx import AsyncClient, Response, Headers
 from uuid import uuid1
 from random import randint
 from app.utils.time_util import tzinfo
@@ -11,6 +12,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.cron import CronTrigger
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.holder.holder_api import AfternoonInfo, MorningInfo, PunchIn, TodayStaticId, TodayPunchInfo
 from typing import TYPE_CHECKING
 from app.utils.time_util import local_now
@@ -20,7 +22,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger("uvicorn")
-
 
 
 class TaskStatus(str, enum.Enum):
@@ -37,12 +38,19 @@ class TaskType(str, enum.Enum):
     PUNCH = "punch"
     TEST = "test"
 
+    def get_task_class(self) -> "TaskBase":
+        if self == TaskType.PUNCH:
+            return PunchTask
+        elif self == TaskType.TEST:
+            return TestTask
+        return None
+
 
 class TaskBase(CommonBase):
 
     __abstract__ = True
  
-    job_id: Mapped[str] = Column(String(64), default=uuid1().hex, comment="任务id")
+    job_id: Mapped[str] = Column(String(64), default=lambda x: uuid1().hex, comment="任务id")
     job_name: Mapped[str] = Column(String(255), comment="任务名称")
     description: Mapped[str] = Column(String(255), comment="任务描述")
     status: Mapped[TaskStatus] = Column(Enum(TaskStatus), default=TaskStatus.IDLE, comment="任务状态")
@@ -52,10 +60,6 @@ class TaskBase(CommonBase):
         self.status = TaskStatus.PENDING
         await self.save()
         try:
-            scheduler.add_job(
-                func=self._run,
-                trigger=DateTrigger(run_date=datetime.now()),
-            )
             scheduler.add_job(
                 func=self._run, 
                 trigger=trigger or CronTrigger(day="*", hour="8,18", minute="45", second="0", timezone=tzinfo), 
@@ -104,36 +108,81 @@ class PunchTask(TaskBase):
         if not self.login_token:
             return False
         return True
+    
+    async def do_update_user_info(self):
+        async with self._async_session_factory() as session:
+            session: "AsyncSession"
+            async with session.begin():
+                session.add(self)
+                self.user.login_token = self.login_token
+                self.user.session_id = self.session_id
+                self.user.user_account = self.user_account
+
+    async def ensure_latest_user_info(self):
+        async with self._async_session_factory() as session:
+            async with session.begin():
+                session: "AsyncSession"
+                session.add(self)
+                task_update_time = await self.awaitable_attrs.update_at
+                user_obj = await self.awaitable_attrs.user
+                user_update_time = await user_obj.awaitable_attrs.update_at
+                if task_update_time > user_update_time:
+                    return
+                self.user_account = self.user.user_account
+                self.session_id = self.user.session_id
+                self.login_token = self.user.login_token
+    
+    async def update_user_info(self, headers: Headers):
+        for k, v in headers.items():
+            if k == "set-cookie":
+                if match := re.search(r"session_id=(.*?);", v):
+                    session_id = match.group(1)
+                    self.session_id = session_id
+            if k == "loginToken":
+                self.login_token = v
+
+        await self.do_update_user_info()
 
     async def run(self):
-        await asyncio.sleep(randint(0, 60 * 12))
-        punch_info: TodayPunchInfo = await TodayStaticId.request(
+        logger.info(f'\n\n======================Task Starting Running======================={local_now()}')
+        sleep_time = randint(0, 60 * 12)
+        logger.info(f'======================Sleeping {sleep_time} Second=======================')
+        await asyncio.sleep(sleep_time)
+        await self.ensure_latest_user_info()
+        punch_info, punch_info_res = await TodayStaticId.request(
             user_account=self.user_account,
             session_id=self.session_id,
             login_token=self.login_token,
         )
-        logger.info(f'=================发起请求=========================={local_now()}')
-        logger.info(f'=================今天是否休息=========================={punch_info.is_rest}')
+        await self.update_user_info(punch_info_res.headers)
+        logger.info(f'================= >>>>>> Request For Get Today Punch Info==========================     {local_now()}')
+        logger.info(f'=================Today Is Rest==========================    {punch_info.is_rest}')
         logger.info(f'{punch_info.res_json}')
         if punch_info.is_rest:
+            logger.info('======================End==========================')
             return
         should_punch, punch_type, card_ponit = PunchIn.should_punch_in(punch_info)
+        logger.info(f'=================should_punch==========================  {should_punch}')
+        logger.info(f'=================punch_type==========================   {punch_type}')
+        logger.info(f'=================card_ponit==========================  {card_ponit}')
         if not should_punch:
+            logger.info('======================No Need To Punch==========================')
+            logger.info('======================End==========================')
             return
         static_id = punch_info.static_id
-        logger.info(f'=================punch_type=========================={punch_type}')
-        logger.info(f'=================card_ponit=========================={card_ponit}')
-        logger.info(f'=================should_punch=========================={should_punch}')
-        logger.info('=================开始打卡==========================')
-        # r = await PunchIn.request(
-        #     login_token=self.login_token,
-        #     user_account=self.user_account,
-        #     punch_type=punch_type,
-        #     static_id=static_id,
-        #     session_id=self.session_id,
-        #     card_point=card_ponit,
-        # )
-        return 
+        logger.info('================= >>>>>> Request For Punch==========================')
+        res: Response = await PunchIn.request(
+            login_token=self.login_token,
+            user_account=self.user_account,
+            punch_type=punch_type,
+            static_id=static_id,
+            session_id=self.session_id,
+            card_point=card_ponit,
+        )
+        await self.update_user_info(res.headers)
+        logger.info('====================Success==========================')
+        logger.info('======================End==========================\n')
+    
 
 class TestTask(TaskBase):
 

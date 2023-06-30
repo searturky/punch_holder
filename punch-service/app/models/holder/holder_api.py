@@ -59,7 +59,7 @@ class PunchIn():
     }
 
     @classmethod
-    async def request(cls, user_account:str, punch_type: PunchInType, static_id: int, login_token:str, session_id:str, card_point:str=None, cookies: dict=None, headers: dict=None, body: dict=None):
+    async def request(cls, user_account:str, punch_type: PunchInType, static_id: int, login_token:str, session_id:str, card_point:str=None, cookies: dict=None, headers: dict=None, body: dict=None) -> Response:
         today_str = get_local_today_date_str()
         async with get_http_client() as http_client:
             http_client: AsyncClient
@@ -79,7 +79,7 @@ class PunchIn():
                 },
             )
             assert res.status_code == 200, 'Request failed'
-            return res.json()
+            return res
 
     @classmethod
     def should_punch_in(cls, today_punch_info: "TodayPunchInfo") -> Tuple[bool, PunchInType, str]:
@@ -93,10 +93,10 @@ class PunchIn():
         logging.info(f"===============today_morning_info.point=================== {today_morning_info.point}")
         logging.info(f"===============today_afternoon_info.point=================== {today_afternoon_info.point}")
         if local_now_time_str < today_morning_info.point and not today_morning_info.is_punch_in:
-            logging.info(f"===============判断为打上午卡===================")
+            logging.info("===============Should Punch Morning===================")
             return True, PunchInType.MORNING, today_morning_info.point
         if local_now_time_str > today_afternoon_info.point and not today_afternoon_info.is_punch_in:
-            logging.info(f"===============判断为打下午卡===================")
+            logging.info("===============Should Punch Afternoon===================")
             return True, PunchInType.AFTERNOON, today_afternoon_info.point
         return False, None, None
 
@@ -145,7 +145,7 @@ class AfternoonInfo():
 
 class TodayPunchInfo():
 
-    def __init__(self, res: Response):
+    def __init__(self, res: "Response"):
         self.res_json: dict = res.json()
         morning_info: list = self.res_json.get("data", {}).get("card_history", {}).get("morning", [])
         afternoon_info: list = self.res_json.get("data", {}).get("card_history", {}).get("afternoon", [])
@@ -174,7 +174,7 @@ class TodayStaticId():
     }
 
     @classmethod
-    async def request(cls, login_token:str, user_account:str, session_id:str, cookies: dict=None, headers: dict=None) -> TodayPunchInfo:
+    async def request(cls, login_token:str, user_account:str, session_id:str, cookies: dict=None, headers: dict=None) -> Tuple["TodayPunchInfo", "Response"]:
         async with get_http_client() as http_client:
             http_client: AsyncClient
             res = await http_client.get(
@@ -187,4 +187,4 @@ class TodayStaticId():
                 }
             )
             assert res.status_code == 200, 'Request failed'
-            return TodayPunchInfo(res)
+            return TodayPunchInfo(res), res
