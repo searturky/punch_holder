@@ -62,7 +62,7 @@ class TaskBase(CommonBase):
         try:
             scheduler.add_job(
                 func=self._run, 
-                trigger=trigger or CronTrigger(day="*", hour="8,18", minute="45", second="0", timezone=tzinfo), 
+                trigger=trigger or CronTrigger(day="*", hour="8,18", minute="31", second="0", timezone=tzinfo), 
                 replace_existing=True,
                 id=self.job_id,
                 name=self.job_name,

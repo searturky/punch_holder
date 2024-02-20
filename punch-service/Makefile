@@ -1,6 +1,7 @@
 VERSION := $(or ${CI_COMMIT_SHORT_SHA},latest)
 
-REPO=searturky/punch-service
+REPO := $(or ${CI_REGISTRY_IMAGE}, registry.searturky.cn/ops/clockin)
+DOCKER_HUB := $(or ${CI_REGISTRY}, searturky/punch-service)
 
 build-local: 
 	docker build -t $(REPO):$(VERSION) -t $(REPO):latest -f ./Dockerfile .
@@ -9,7 +10,20 @@ build-image:
 	docker build -t $(REPO):$(VERSION) -t $(REPO):latest -f ./Dockerfile .
 	docker push $(REPO):$(VERSION)
 	docker push $(REPO):latest
+	docker rmi $(REPO):$(VERSION)
+
+build-image-dockerhub: 
+	docker build -t $(DOCKER_HUB):$(VERSION) -t $(REPO):latest -f ./Dockerfile .
+	docker push $(DOCKER_HUB):$(VERSION)
+	docker push $(DOCKER_HUB):latest
 	# docker rmi $(REPO):$(VERSION)
+ 
+build-image-gitlab:
+	docker pull $(REPO):latest || true
+	docker build --cache-from $(REPO):latest --network host -t $(REPO):$(VERSION) -t $(REPO):latest -f ./Dockerfile .
+	docker push $(REPO):$(VERSION) 
+	docker push $(REPO):latest
+	docker rmi $(REPO):$(VERSION)
 
 env-up:
 	docker-compose -f docker/docker-compose-basic.yaml up -d
