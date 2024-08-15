@@ -21,4 +21,9 @@ class RegisterTestTaskIn(BaseModel):
     test_msg: str = Field(..., description="测试消息")
 
 
+class CallPunchTaskIn(BaseModel):
+    user_account: str | None = Field(None, description="打卡账号")
+    session_id: str | None = Field(None, description="打卡session_id")
+    login_token: str | None = Field(None, description="打卡login_token")
+
 

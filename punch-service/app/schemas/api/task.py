@@ -6,7 +6,7 @@ from httpx import AsyncClient, Response, Headers
 from uuid import uuid1
 from random import randint
 from app.utils.time_util import tzinfo
-from sqlalchemy import Column, Enum, ForeignKey, Integer, String
+from sqlalchemy import Column, Enum, ForeignKey, Integer, String, text
 from app.schemas.common import CommonBase
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -118,6 +118,27 @@ class PunchTask(TaskBase):
                 self.user.session_id = self.session_id
                 self.user.user_account = self.user_account
 
+    async def do_update_user_info_at_once(self):
+        async with self._async_session_factory() as session:
+            session: "AsyncSession"
+            async with session.begin():
+                stmt = text("""
+                    update 
+                        "user"
+                    set
+                        login_token=:login_token, 
+                        session_id=:session_id, 
+                        user_account=:user_account 
+                    where 
+                        id=:user_id
+                """)
+                await session.execute(stmt, {
+                    "login_token": self.login_token,
+                    "session_id": self.session_id,
+                    "user_account": self.user_account,
+                    "user_id": self.user_id,
+                })
+
     async def ensure_latest_user_info(self):
         async with self._async_session_factory() as session:
             async with session.begin():
@@ -143,11 +164,92 @@ class PunchTask(TaskBase):
 
         await self.do_update_user_info()
 
-    async def run(self):
+    async def update_user_info_at_once(self, headers: Headers):
+        for k, v in headers.items():
+            if k == "set-cookie":
+                if match := re.search(r"session_id=(.*?);", v):
+                    session_id = match.group(1)
+                    self.session_id = session_id
+            if k == "loginToken":
+                self.login_token = v
+
+        await self.do_update_user_info_at_once()
+
+    async def punch_morning(self):
         logger.info(f'\n\n======================Task Starting Running======================={local_now()}')
-        sleep_time = randint(0, 60 * 12)
-        logger.info(f'======================Sleeping {sleep_time} Second=======================')
-        await asyncio.sleep(sleep_time)
+        punch_info, punch_info_res = await TodayStaticId.request(
+            user_account=self.user_account,
+            session_id=self.session_id,
+            login_token=self.login_token,
+        )
+        await self.update_user_info_at_once(punch_info_res.headers)
+        logger.info(f'================= >>>>>> Request For Get Today Punch Info==========================     {local_now()}')
+        logger.info(f'=================Today Is Rest==========================    {punch_info.is_rest}')
+        logger.info(f'{punch_info.res_json}')
+        should_punch, punch_type, card_ponit = PunchIn.should_punch_in(punch_info)
+        logger.info(f'=================should_punch==========================  {should_punch}')
+        logger.info(f'=================punch_type==========================   {punch_type}')
+        logger.info(f'=================card_ponit==========================  {card_ponit}')
+        if not should_punch:
+            logger.info('======================No Need To Punch==========================')
+            logger.info('======================End==========================')
+            return
+        static_id = punch_info.static_id
+        logger.info('================= >>>>>> Request For Punch==========================')
+        res: Response = await PunchIn.request(
+            login_token=self.login_token,
+            user_account=self.user_account,
+            punch_type=punch_type,
+            static_id=static_id,
+            session_id=self.session_id,
+            card_point=card_ponit,
+        )
+        await self.update_user_info_at_once(res.headers)
+        logger.info('====================Success==========================')
+        logger.info('======================End==========================\n')
+
+    async def run_once(self):
+        logger.info(f'\n\n======================Task Starting Running======================={local_now()}')
+        punch_info, punch_info_res = await TodayStaticId.request(
+            user_account=self.user_account,
+            session_id=self.session_id,
+            login_token=self.login_token,
+        )
+        await self.update_user_info_at_once(punch_info_res.headers)
+        logger.info(f'================= >>>>>> Request For Get Today Punch Info==========================     {local_now()}')
+        logger.info(f'=================Today Is Rest==========================    {punch_info.is_rest}')
+        logger.info(f'{punch_info.res_json}')
+        if punch_info.is_rest:
+            logger.info('======================End==========================')
+            return
+        should_punch, punch_type, card_ponit = PunchIn.should_punch_in(punch_info)
+        logger.info(f'=================should_punch==========================  {should_punch}')
+        logger.info(f'=================punch_type==========================   {punch_type}')
+        logger.info(f'=================card_ponit==========================  {card_ponit}')
+        if not should_punch:
+            logger.info('======================No Need To Punch==========================')
+            logger.info('======================End==========================')
+            return
+        static_id = punch_info.static_id
+        logger.info('================= >>>>>> Request For Punch==========================')
+        res: Response = await PunchIn.request(
+            login_token=self.login_token,
+            user_account=self.user_account,
+            punch_type=punch_type,
+            static_id=static_id,
+            session_id=self.session_id,
+            card_point=card_ponit,
+        )
+        await self.update_user_info_at_once(res.headers)
+        logger.info('====================Success==========================')
+        logger.info('======================End==========================\n')
+
+    async def run(self, call_immediately: bool = False):
+        logger.info(f'\n\n======================Task Starting Running======================={local_now()}')
+        if not call_immediately:
+            sleep_time = randint(0, 60 * 12)
+            logger.info(f'======================Sleeping {sleep_time} Second=======================')
+            await asyncio.sleep(sleep_time)
         await self.ensure_latest_user_info()
         punch_info, punch_info_res = await TodayStaticId.request(
             user_account=self.user_account,

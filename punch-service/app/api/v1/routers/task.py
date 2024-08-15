@@ -4,7 +4,7 @@ from app.crud.task import get_tasks_from_current_user, get_all_user_tasks
 from fastapi import APIRouter, Body, Depends, Query, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from app.models.api.task import RegisterPunchTaskIn, RegisterTestTaskIn
+from app.models.api.task import CallPunchTaskIn, RegisterPunchTaskIn, RegisterTestTaskIn
 from app.schemas.api.task import TestTask, PunchTask, TaskBase, TaskType, TaskStatus
 from app.schemas.api.user import User
 from app.scheduler import scheduler
@@ -79,6 +79,33 @@ async def start_test_task_by_id(task_id: int, user: "User" = Depends(get_current
     return JSONResponse(status_code=status.HTTP_200_OK, content={"detail": "测试任务开始"}) 
 
 
+@router.post("/call", summary="启动一个一次性打卡任务")
+async def call_task(call_task_info: CallPunchTaskIn, user: "User" = Depends(get_current_active_user)):
+    punch_task: PunchTask = PunchTask(**{
+        "session_id": user.session_id,
+        "user_account": user.user_account,
+        "login_token": user.login_token,
+        **call_task_info.dict(exclude_unset=True),
+        "user_id": user.id
+    })
+    await punch_task.run_once()
+    return JSONResponse(status_code=status.HTTP_200_OK, content={"detail": "打卡任务执行成功"})
+
+
+@router.post("/trigger/{task_id}", summary="通过id马上触发任务")
+async def trigger_task_by_id(task_id: int, user: "User" = Depends(get_current_active_user)):
+    """
+    未完善的方法，这里只是简单的触发任务，没有考虑任务的类型
+    """
+    task: PunchTask = await PunchTask.find_by_id(task_id)
+    if not task:
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"detail": "任务不存在"})
+    if task.user_id != user.id and not user.is_admin:
+        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": "无权触发该任务"})
+    await task.run(call_immediately=True)
+    return JSONResponse(status_code=status.HTTP_200_OK, content={"detail": "触发成功"})
+
+
 @router.delete("/{task_type}/{task_id}", response_description="删除一个打卡任务", summary="通过id删除一个打卡任务")
 async def delete_task(task_type: "TaskType", task_id: int, user: "User" = Depends(get_current_active_user)):
     cls: TaskBase = task_type.get_task_class()
@@ -91,3 +118,4 @@ async def delete_task(task_type: "TaskType", task_id: int, user: "User" = Depend
         scheduler.remove_job(cast("Job", job).id)
     await task.delete()
     return JSONResponse(status_code=status.HTTP_200_OK, content={"detail": "删除成功"})
+

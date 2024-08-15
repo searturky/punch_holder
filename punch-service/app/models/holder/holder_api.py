@@ -25,15 +25,15 @@ class PunchInType(str, Enum):
 
 class ApiURLs(str, Enum):
 
-    TodayStaticId = "https://zkz.holderzone.com/card/come_in"
-    PunchIn = "https://zkz.holderzone.com/card/punch_in"
+    TodayStaticId = "https://zkzoa.holderzone.com/card/come_in"
+    PunchIn = "https://zkzoa.holderzone.com/card/punch_in"
 
 
 class PunchIn():
 
     _url = ApiURLs.PunchIn
     _headers = {
-        "Host": "zkz.holderzone.com",
+        "Host": "zkzoa.holderzone.com",
         "languages": "zh_CN",
         "system": "oa",
         "version": "169",
@@ -124,23 +124,23 @@ class MorningInfo():
 
 class AfternoonInfo():
     
-        def __init__(self, info: dict):
-            self._info = info
-            self.info_type = PunchInType.AFTERNOON
-            self.point = info.get("point") or "18:30:00"
-            self.card_address = info.get("card_address") or ""
-    
-        @property
-        def punch_in_time(self) -> str:
-            return self._info.get("time")
-    
-        @property
-        def punch_in_is_active(self) -> bool:
-            return self._info.get("active", False)
-    
-        @property
-        def is_punch_in(self) -> bool:
-            return self.punch_in_time != False or self._info.get("state") == "done"
+    def __init__(self, info: dict):
+        self._info = info
+        self.info_type = PunchInType.AFTERNOON
+        self.point = info.get("point") or "18:30:00"
+        self.card_address = info.get("card_address") or ""
+
+    @property
+    def punch_in_time(self) -> str:
+        return self._info.get("time")
+
+    @property
+    def punch_in_is_active(self) -> bool:
+        return self._info.get("active", False)
+
+    @property
+    def is_punch_in(self) -> bool:
+        return self.punch_in_time != False or self._info.get("state") == "done"
 
 
 class TodayPunchInfo():
@@ -160,7 +160,7 @@ class TodayStaticId():
 
     _url = ApiURLs.TodayStaticId
     _headers = {
-        "Host": "zkz.holderzone.com",
+        "Host": "zkzoa.holderzone.com",
         "languages": "zh_CN",
         "system": "oa",
         "version": "169",
