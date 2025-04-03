@@ -1,4 +1,6 @@
 import re
+import time
+import jwt
 import enum
 import asyncio
 import logging
@@ -12,9 +14,10 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.combining import OrTrigger
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.holder.holder_api import AfternoonInfo, MorningInfo, PunchIn, TodayStaticId, TodayPunchInfo
-from typing import TYPE_CHECKING
+from app.models.holder.holder_api import AfternoonInfo, PunchDCJWT, PunchIn, TodayStaticId, TodayPunchInfo, PunchDCIn
+from typing import TYPE_CHECKING, Literal
 from app.utils.time_util import local_now
 from datetime import datetime, timedelta,timezone
 if TYPE_CHECKING:
@@ -44,6 +47,12 @@ class TaskType(str, enum.Enum):
         elif self == TaskType.TEST:
             return TestTask
         return None
+    
+
+class PunchTimeType(int, enum.Enum):
+    
+    MORNING = 0
+    AFTERNOON = 1
 
 
 class TaskBase(CommonBase):
@@ -299,3 +308,109 @@ class TestTask(TaskBase):
         print(f"test task {self.id} is running")
 
     
+class PunchDCTask(TaskBase):
+
+    __tablename__ = "punch_task_dc"
+
+    type: Mapped[TaskType] = Column(Enum(TaskType), comment="任务类型", default=TaskType.PUNCH, nullable=False)
+
+    token: Mapped[str] = Column(String(256), nullable=False, comment="打卡请求头里的Authorization")
+    
+    user: Mapped["User"] = relationship(back_populates="punch_dc_tasks")
+
+    async def start(self, scheduler: AsyncIOScheduler, trigger: CronTrigger=None):
+        self.status = TaskStatus.PENDING
+        await self.save()
+        default_trigger = OrTrigger([
+            CronTrigger(day="*", hour="8", minute="45", second="0", timezone=tzinfo),
+            CronTrigger(day="*", hour="18", minute="10", second="0", timezone=tzinfo)
+        ])
+        try:
+            scheduler.add_job(
+                func=self._run, 
+                trigger=trigger or default_trigger, 
+                replace_existing=True,
+                id=self.job_id,
+                name=self.job_name,
+            )
+        except Exception as e:
+            self.status = TaskStatus.FAILED
+            await self.save()
+            raise e
+
+    async def run_once(self, punch_time_type: PunchTimeType):
+        logger.info(f'\n\n======================Task Punch DC Starting Running======================={local_now()}')
+        logger.info('================= >>>>>> Request For Punch==========================')
+        res: Response = await PunchDCIn.request(
+            authorization=self.token,
+            clockin_type=punch_time_type,
+        )
+        logger.info('====================Success==========================')
+        logger.info('======================End==========================\n')
+
+    @staticmethod
+    async def get_jwt():
+        res = await PunchDCJWT.request()
+        body: dict = res.json()
+        data = body.get("Data") or {}
+        token = data.get("WxToken") or {}
+        if not token:
+            logger.info('======================Get New Token Failed==========================')
+            raise Exception("Get New Token Failed")
+        return 'bearer ' + token
+    
+    async def ensure_latest_user_info(self):
+        async with self._async_session_factory() as session:
+            async with session.begin():
+                session: "AsyncSession"
+                session.add(self)
+                token = self.token[7:]
+                decoded: dict = jwt.decode(token, options={"verify_signature": False})
+                exp = decoded.get("exp")
+                if not exp or exp < int(time.time()):
+                    logger.info('======================Token Expired==========================')
+                    logger.info('======================Request New Token==========================')
+                    self.token = await self.get_jwt()
+                session.commit()
+                session.refresh(self)
+
+    async def run(self, call_immediately: bool = False):
+        logger.info(f'\n\n======================Task Starting Running======================={local_now()}')
+        if not call_immediately:
+            sleep_time = randint(0, 60 * 14)
+            logger.info(f'======================Sleeping {sleep_time} Second=======================')
+            await asyncio.sleep(sleep_time)
+        await self.ensure_latest_user_info()
+        punch_info, punch_info_res = await TodayStaticId.request(
+            user_account=self.user_account,
+            session_id=self.session_id,
+            login_token=self.login_token,
+        )
+        await self.update_user_info(punch_info_res.headers)
+        logger.info(f'================= >>>>>> Request For Get Today Punch Info==========================     {local_now()}')
+        logger.info(f'=================Today Is Rest==========================    {punch_info.is_rest}')
+        logger.info(f'{punch_info.res_json}')
+        if punch_info.is_rest:
+            logger.info('======================End==========================')
+            return
+        should_punch, punch_type, card_ponit = PunchIn.should_punch_in(punch_info)
+        logger.info(f'=================should_punch==========================  {should_punch}')
+        logger.info(f'=================punch_type==========================   {punch_type}')
+        logger.info(f'=================card_ponit==========================  {card_ponit}')
+        if not should_punch:
+            logger.info('======================No Need To Punch==========================')
+            logger.info('======================End==========================')
+            return
+        static_id = punch_info.static_id
+        logger.info('================= >>>>>> Request For Punch==========================')
+        res: Response = await PunchIn.request(
+            login_token=self.login_token,
+            user_account=self.user_account,
+            punch_type=punch_type,
+            static_id=static_id,
+            session_id=self.session_id,
+            card_point=card_ponit,
+        )
+        await self.update_user_info(res.headers)
+        logger.info('====================Success==========================')
+        logger.info('======================End==========================\n')

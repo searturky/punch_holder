@@ -10,6 +10,9 @@ This project is licensed under the terms of the MIT license.
 
 ---
 
+## Python Version
+python < 3.12
+
 ### 目录结构描述
 ```
 .

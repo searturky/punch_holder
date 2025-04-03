@@ -1,6 +1,6 @@
 import enum
 from typing import Any, List, TYPE_CHECKING
-from app.schemas.api.task import PunchTask, TestTask, TaskType
+from app.schemas.api.task import PunchTask, TestTask, TaskType, PunchDCTask
 from app.schemas.common import CommonBase
 from sqlalchemy import Column, Boolean, Integer, String, Enum, ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -25,6 +25,7 @@ class User(CommonBase):
     nickname: Mapped[str] = Column(String(32))
 
     punch_tasks: Mapped[List["PunchTask"]] = relationship(back_populates="user")
+    punch_dc_tasks: Mapped[List["PunchDCTask"]] = relationship(back_populates="user")
     test_tasks: Mapped[List["TestTask"]] = relationship(back_populates="user")
 
     # punch login info 

@@ -1,17 +1,19 @@
+import jwt
+import time
+import base64
 from typing import List, TYPE_CHECKING, cast
 from app.crud.user import get_current_active_user, get_current_active_admin_user
 from app.crud.task import get_tasks_from_current_user, get_all_user_tasks
 from fastapi import APIRouter, Body, Depends, Query, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from app.models.api.task import CallPunchTaskIn, RegisterPunchTaskIn, RegisterTestTaskIn
-from app.schemas.api.task import TestTask, PunchTask, TaskBase, TaskType, TaskStatus
+from app.models.api.task import CallPunchTaskIn, RegisterPunchTaskIn, RegisterTestTaskIn, RunPunchDCTaskIn
+from app.schemas.api.task import TestTask, PunchTask, TaskBase, TaskType, TaskStatus, PunchDCTask
 from app.schemas.api.user import User
 from app.scheduler import scheduler
 from fastapi.encoders import jsonable_encoder
 if TYPE_CHECKING:
     from apscheduler.job import Job
-
 
 router = APIRouter()
 router.tags = ["任务"]
@@ -51,15 +53,41 @@ async def register_punch_task(punch_task_info: RegisterPunchTaskIn = Body(...), 
     await punch_task.save()
     return JSONResponse(status_code=status.HTTP_201_CREATED, content={"detail": "打卡任务注册成功"})
 
+@router.post("/punch/dc", description="注册一个新打卡任务（dc）", summary="注册一个新打卡任务（dc）")
+async def register_punch_task(user: User = Depends(get_current_active_user)):
+    token = await PunchDCTask.get_jwt()
+    punch_task: PunchDCTask = PunchDCTask(token=token)
+    await punch_task.save()
+    return JSONResponse(status_code=status.HTTP_201_CREATED, content={"detail": "打卡任务注册成功"})
+
+@router.post("/punch/once/dc", description="马上打卡（dc）", summary="马上打卡（dc）")
+async def register_punch_task_dc(punch_task_info: RunPunchDCTaskIn = Body(...), user: User = Depends(get_current_active_user)):
+    token = punch_task_info.jwt
+    if not token:
+        token = await PunchDCTask.get_jwt()
+    if token.startswith("bearer ") or token.startswith("Bearer "):
+        info_token = token[7:]
+    decoded: dict = jwt.decode(info_token, options={"verify_signature": False})
+    exp = decoded.get("exp")
+    if not exp:
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "jwt不合法"})
+    if exp < int(time.time()):
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "jwt已过期"})
+    punch_task = PunchDCTask(token=token)
+    await punch_task.run_once(punch_task_info.punch_type)
+    # if not punch_task.is_valid_start_arg():
+    #     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "打卡任务注册失败，参数不合法"})
+    # await punch_task.save()
+    return JSONResponse(status_code=status.HTTP_201_CREATED, content={"detail": "打卡成功"})
 
 @router.get("/punch/start/{task_id}", description="通过id开始一个打卡任务", summary="通过id开始一个打卡任务")
 async def start_punch_task_by_id(task_id: int, user: User = Depends(get_current_active_user)):
-    punch_task: PunchTask = await PunchTask.find_by_id(task_id)
-    if not punch_task:
+    task: TaskBase = await TaskBase.find_by_id(task_id)
+    if not task:
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"detail": "该打卡任务不存在"})
-    if punch_task.status != TaskStatus.IDLE and punch_task.status != TaskStatus.FAILED:
+    if task.status != TaskStatus.IDLE and task.status != TaskStatus.FAILED:
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "打卡任务已经在运行中"})
-    await punch_task.start(scheduler)
+    await task.start(scheduler)
     return JSONResponse(status_code=status.HTTP_200_OK, content={"detail": "打卡任务开始成功"})
 
 

@@ -1,3 +1,5 @@
+import re
+import random
 import logging
 from datetime import datetime
 from enum import Enum
@@ -27,6 +29,100 @@ class ApiURLs(str, Enum):
 
     TodayStaticId = "https://zkzoa.holderzone.com/card/come_in"
     PunchIn = "https://zkzoa.holderzone.com/card/punch_in"
+    PunchDCIn = "https://kq.daochen.com/api/AttendanceManagement/clock-in/create"
+    DCJWT = "https://notify.cddc56.com/WeixinUser/DecodeInfo"
+
+
+class PunchDCJWT():
+    _url = ApiURLs.DCJWT
+    _headers = {
+        "Host": "notify.cddc56.com", 
+        "Content-type": "application/json",
+        "Accept-Encoding": "gzip, deflate, br",
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_3_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.57(0x1800392b) NetType/WIFI Language/zh_CN",
+        "Referer": "https://servicewechat.com/wxa71ddd1b81c2fab7/78/page-frame.html"
+    }
+    _body = {
+        "weappid": "wxa71ddd1b81c2fab7",
+        "vi": "n6zdY33axvgpT6yocJBsig==",
+        "isjwt": True,
+        "unionid": "onrOR53KJGoEN6QK93tAq_4cjSiE",
+        "encryptedData": "L1EuZl7piFPKb5tFr3PD7wpL59X1Cv91BuKfKf6Eec875nkcHJTPH0+MDW9p+WQIPFAk/IlLGoPtHPMnB+FK32F/+3kDUdzPZmhuF/7gKB8lLGRcFiv4vnIVYjzpuDgNBE9Y94U8b/ltNo0jQD69UWkQvbUM8k/4Wb/WHUiPsaXIzO/PRZPW4h6XjKkV32wIiPbIgJmkyFrdAE3LwiPS7Do1rP96ZU2ebIRg3mIrx9SyTs042BFwBG0d/aRq7qvvRRUgActMr6cCzHbreYIp72KzF2nK8vx/BImSQXHjfrBEmDdTjIoaW7/M55KbFoTSjtfPcY99rMFPD1242Kmt6IUQhv8D0hO4lrl6y/R+czWR7Qgd0PFGbusV5Xmm4nHUXgaVxNJSxjmB6Th5HPORczABc8741TNQSi9YGzV6BikK53YOanTerMRCk5pNeZAxOB9Fj87EqRODhuESodOaSOi/h4naeJ0a9lg+dR9j5qFHeBSUrNh+3M8JZmUpLbnWZXlZMF+JKZZbo3OVahM2Aw=="
+    }
+
+    def prepare_base64(base64_str):
+        # 清理非法字符并修复填充
+        cleaned = re.sub(r'[^A-Za-z0-9+/=]', '', base64_str.replace('\\', ''))
+        padding = len(cleaned) % 4
+        if padding:
+            cleaned += '=' * (4 - padding)
+        return cleaned
+
+    @classmethod
+    async def request(cls) -> Response:
+        # prepare_base64 = cls.prepare_base64(cls._body["encryptedData"])
+        # cls._body["encryptedData"] = prepare_base64
+        async with get_http_client() as http_client:
+            http_client: AsyncClient
+            res = await http_client.post(
+                url=cls._url,
+                headers=cls._headers,
+                json=cls._body,
+            )
+            assert res.status_code == 200, 'Request failed'
+            return res
+
+class PunchDCIn():
+    _url = ApiURLs.PunchDCIn
+    _headers = {
+        "Host": "kq.daochen.com",
+        "Accept": "application/json",
+        "Authorization": None,
+        "Sec-Fetch-Site": "same-site",
+        "Accept-Language": "zh-Hans",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Sec-Fetch-Mode": "cors",
+        "Content-Type": "application/json; charset=utf-8",
+        "Origin": "https://m.daochen.com",
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_3_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.57(0x1800392b) NetType/4G Language/zh_CN miniProgram/wxa71ddd1b81c2fab7",
+        "Referer": "https://m.daochen.com/",
+        "Sec-Fetch-Dest": "empty",
+    }
+    _body = {
+        "lng" : 104.07648268670816,
+        "lat" : 30.686807826963463,
+        "clockInType" : 0,
+        "clockInDate" : "2025-04-02T08:54:15.387",
+        "address" : "四川省成都市金牛区新村河边街15-1号"
+    }
+    ING = 104.07648268670816
+    LAT = 30.686807826963463
+
+    @classmethod
+    async def request(cls, clockin_type: int, authorization: str) -> Response:
+        clock_n_date = local_now().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
+        headers = {
+            **cls._headers,
+            "Authorization": authorization
+        }
+        random_ing = cls.ING + random.uniform(-0.0000000000001, 0.0000000000001)
+        random_lat = cls.LAT + random.uniform(-0.0000000000001, 0.0000000000001)
+        body = {
+            **cls._body,
+            "lng": random_ing,
+            "lat": random_lat,
+            "clockInType": int(clockin_type),
+            "clockInDate": clock_n_date
+        }
+        async with get_http_client() as http_client:
+            http_client: AsyncClient
+            res = await http_client.post(
+                url=cls._url,
+                headers=headers,
+                json=body,
+            )
+            assert res.status_code == 200, 'Request failed'
+            return res
 
 
 class PunchIn():
