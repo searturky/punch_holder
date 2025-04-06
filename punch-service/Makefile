@@ -26,10 +26,18 @@ build-image-gitlab:
 	docker rmi $(REPO):$(VERSION)
 
 env-up:
-	docker-compose -f docker/docker-compose-basic.yaml up -d
+	if command -v docker-compose &> /dev/null; then \
+		docker-compose -f docker/docker-compose-basic.yaml up -d; \
+	else \
+		docker compose -f docker/docker-compose-basic.yaml up -d; \
+	fi
 
 env-down:
-	docker-compose -f docker/docker-compose-basic.yaml down
+	if command -v docker-compose >/dev/null 2>&1; then \
+ 		docker-compose -f docker/docker-compose-basic.yaml down; \
+	else \
+ 		docker compose -f docker/docker-compose-basic.yaml down; \
+ 	fi
 
 up:
 	docker-compose -f docker/docker-compose.yaml up -d

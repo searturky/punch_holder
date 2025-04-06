@@ -1,7 +1,7 @@
 import jwt
 import time
 import base64
-from typing import List, TYPE_CHECKING, cast
+from typing import List, TYPE_CHECKING, Literal, cast
 from app.crud.user import get_current_active_user, get_current_active_admin_user
 from app.crud.task import get_tasks_from_current_user, get_all_user_tasks
 from fastapi import APIRouter, Body, Depends, Query, status
@@ -78,7 +78,22 @@ async def register_punch_task_dc(punch_task_info: RunPunchDCTaskIn = Body(...), 
     # if not punch_task.is_valid_start_arg():
     #     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "打卡任务注册失败，参数不合法"})
     # await punch_task.save()
-    return JSONResponse(status_code=status.HTTP_201_CREATED, content={"detail": "打卡成功"})
+    return JSONResponse(status_code=status.HTTP_200_OK, content={"detail": "打卡成功"})
+
+@router.get("/punch/once/dc/3REffw3/{punch_type}", description="马上打卡（dc）", summary="马上打卡（dc）")
+async def register_punch_task_dc_get(punch_type: Literal["0", "1"]):
+    token: str = await PunchDCTask.get_jwt()
+    if token.startswith("bearer ") or token.startswith("Bearer "):
+        info_token = token[7:]
+    decoded: dict = jwt.decode(info_token, options={"verify_signature": False})
+    exp = decoded.get("exp")
+    if not exp:
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "jwt不合法"})
+    if exp < int(time.time()):
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "jwt已过期"})
+    punch_task = PunchDCTask(token=token)
+    await punch_task.run_once(int(punch_type))
+    return JSONResponse(status_code=status.HTTP_200_OK, content={"detail": "打卡成功"})
 
 @router.get("/punch/start/{task_id}", description="通过id开始一个打卡任务", summary="通过id开始一个打卡任务")
 async def start_punch_task_by_id(task_id: int, user: User = Depends(get_current_active_user)):
