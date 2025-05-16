@@ -348,6 +348,17 @@ class PunchDCTask(TaskBase):
         logger.info('====================Success==========================')
         logger.info('======================End==========================\n')
 
+    async def run_once_with_local_jwt(self, punch_time_type: PunchTimeType):
+        logger.info(f'\n\n======================Task Punch DC With Local JWT Starting Running======================={local_now()}')
+        logger.info('================= >>>>>> Request For Punch==========================')
+        res: Response = await PunchDCIn.request(
+            authorization=self.token,
+            clockin_type=punch_time_type,
+        )
+        await self.update_user_info(res.headers)
+        logger.info('====================Success==========================')
+        logger.info('======================End==========================\n')
+
     @staticmethod
     async def get_jwt():
         res = await PunchDCJWT.request()

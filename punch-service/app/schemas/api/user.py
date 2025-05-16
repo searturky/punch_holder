@@ -23,6 +23,7 @@ class User(CommonBase):
     email: Mapped[str] = Column(String(64))
     phone: Mapped[str] = Column(String(32))
     nickname: Mapped[str] = Column(String(32))
+    dc_jwt: Mapped[str] = Column(String)
 
     punch_tasks: Mapped[List["PunchTask"]] = relationship(back_populates="user")
     punch_dc_tasks: Mapped[List["PunchDCTask"]] = relationship(back_populates="user")

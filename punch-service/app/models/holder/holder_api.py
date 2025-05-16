@@ -60,8 +60,8 @@ class PunchDCJWT():
 
     @classmethod
     async def request(cls) -> Response:
-        # prepare_base64 = cls.prepare_base64(cls._body["encryptedData"])
-        # cls._body["encryptedData"] = prepare_base64
+        prepare_base64 = cls.prepare_base64(cls._body["encryptedData"])
+        cls._body["encryptedData"] = prepare_base64
         async with get_http_client() as http_client:
             http_client: AsyncClient
             res = await http_client.post(

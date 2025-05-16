@@ -22,6 +22,11 @@ class RunPunchDCTaskIn(BaseModel):
     punch_type: "PunchTimeType" = Field(description="打卡类型, 0 为早上打卡，1 为下午打卡")
 
 
+class RunPunchJWtDCTaskIn(BaseModel):
+
+    punch_type: "PunchTimeType" = Field(description="打卡类型, 0 为早上打卡，1 为下午打卡")
+
+
 class RegisterTestTaskIn(BaseModel):
 
     test_msg: str = Field(..., description="测试消息")

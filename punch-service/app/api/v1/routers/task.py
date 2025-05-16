@@ -7,7 +7,7 @@ from app.crud.task import get_tasks_from_current_user, get_all_user_tasks
 from fastapi import APIRouter, Body, Depends, Query, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from app.models.api.task import CallPunchTaskIn, RegisterPunchTaskIn, RegisterTestTaskIn, RunPunchDCTaskIn
+from app.models.api.task import CallPunchTaskIn, RegisterPunchTaskIn, RegisterTestTaskIn, RunPunchDCTaskIn, RunPunchJWtDCTaskIn
 from app.schemas.api.task import TestTask, PunchTask, TaskBase, TaskType, TaskStatus, PunchDCTask
 from app.schemas.api.user import User
 from app.scheduler import scheduler
@@ -59,6 +59,32 @@ async def register_punch_task(user: User = Depends(get_current_active_user)):
     punch_task: PunchDCTask = PunchDCTask(token=token)
     await punch_task.save()
     return JSONResponse(status_code=status.HTTP_201_CREATED, content={"detail": "打卡任务注册成功"})
+
+@router.post("/register/dc/jwt", description="注册DC的jwt", summary="注册DC的jwt")
+async def register_dc_jwt(req_jwt: str = Body(...), user: User = Depends(get_current_active_user)):
+    if not req_jwt:
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "jwt不能为空"})
+    if not req_jwt.startswith("bearer ") and not req_jwt.startswith("Bearer "):
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "jwt格式不合法"})
+    info_token = req_jwt[7:]
+    decoded: dict = jwt.decode(info_token, options={"verify_signature": False})
+    exp = decoded.get("exp")
+    if not exp:
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "jwt不合法"})
+    if exp < int(time.time()):
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "jwt已过期"})
+    user.dc_jwt = req_jwt
+    await user.save()
+    return JSONResponse(status_code=status.HTTP_201_CREATED, content={"detail": "注册jwt成功"})
+
+@router.post("/punch/once/dc/jwt", description="马上打卡jwt", summary="马上打卡jwt")
+async def run_punch_task_dc_jwt(punch_task_info: RunPunchJWtDCTaskIn = Body(...), user: User = Depends(get_current_active_user)):
+    token = user.dc_jwt
+    if not token:
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "jwt不能为空"})
+    punch_task: PunchDCTask = PunchDCTask(token=token)
+    await punch_task.run_once(punch_task_info.punch_type)
+    return JSONResponse(status_code=status.HTTP_200_OK, content={"detail": "打卡成功"})
 
 @router.post("/punch/once/dc", description="马上打卡（dc）", summary="马上打卡（dc）")
 async def register_punch_task_dc(punch_task_info: RunPunchDCTaskIn = Body(...), user: User = Depends(get_current_active_user)):
